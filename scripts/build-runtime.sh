@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
 # Builds the Pi-Bolt runtime: Bun on the patched WebKit (JavaScriptCore with the ahead-of-time compiler), LTO, release flags.
 # With a sysroot (scripts/toolchain/make-sysroot.sh) the result needs only glibc 2.17 and carries its own ICU, like official Bun.
-# Usage: scripts/build-runtime.sh [--native] [--lto on|off] [-jN]
+# Usage: scripts/build-runtime.sh [--native] [--lto on|off] [--build-dir NAME] [-jN]
 #   --native     link against the host's libc and ICU instead (faster to set up, but the binary only runs on systems like
 #                this one). On macOS there is no sysroot: the build uses Xcode's SDK, for macOS 13 and later.
 #   --lto off    no link-time optimization: a faster build that needs less memory, for working on the engine
+#   --build-dir NAME  build in $PIBOLT_WORK/bun/build/NAME (default pibolt-release, or pibolt-release-nolto without LTO): one
+#                directory per set of compiler flags, so builds that differ only in them (BUN_CPU_TARGET) are kept side by side
 #   -jN          jobs at once (default: Bun's build, one per core)
+# Environment: BUN_CPU_TARGET (-march for the x64 C/C++ and Rust halves; default nehalem, the portable build; znver4 or native
+#              for a runtime that only has to run on this machine). Changing it recompiles everything: a new --build-dir.
 # Needs: the sources (scripts/fetch-sources.sh), clang/LLVM, cmake, ninja, rust (cargo), bun. A long build: WebKit and Bun from
 # source, with LTO.
 source "$(dirname "$0")/lib/common.sh"
 need bun; need cmake; need cargo
 
-NATIVE=; LTO=on; JOBS=()
+NATIVE=; LTO=on; JOBS=(); BUILD_DIR_NAME=""
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--native) NATIVE=1 ;;
 	--lto) LTO="$2"; shift ;;
+	--build-dir) BUILD_DIR_NAME="$2"; shift ;;
 	-j*) JOBS=("$1") ;;
 	*) die "unknown option $1" ;;
 	esac
@@ -31,7 +36,8 @@ if [ -z "$NATIVE" ]; then
 	export LINUX_GLIBC_SYSROOT="$SYSROOT"
 fi
 
-BUILD_DIR="build/pibolt-release"; [ "$LTO" = off ] && BUILD_DIR="build/pibolt-release-nolto"
+DEFAULT_BUILD_NAME="pibolt-release"; [ "$LTO" = off ] && DEFAULT_BUILD_NAME="pibolt-release-nolto"
+BUILD_DIR="build/${BUILD_DIR_NAME:-$DEFAULT_BUILD_NAME}"
 EXTRA=()
 # Bun's own floor for macOS. Without it, a local build targets the SDK's version (this machine's macOS).
 [ "$PIBOLT_OS" = darwin ] && EXTRA+=(--osx-deployment-target=13.0)

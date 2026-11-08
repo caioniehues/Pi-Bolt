@@ -19023,3 +19023,41 @@ index 7a72a775..e210d4ef 100644
 2.54.0 (Apple Git-157)
 
 
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pi-bolt <pi-bolt@localhost>
+Date: Sun, 8 Nov 2026 11:53:56 -0300
+Subject: [PATCH] build: BUN_CPU_TARGET picks the x64 -march (default nehalem)
+
+The x64 CPU target was nehalem for every build, the portable floor Bun
+ships. A runtime that only has to run on the machine it is built on can
+take that CPU's instruction set instead: BUN_CPU_TARGET=znver4 (or
+native, x86-64-v3, ...) sets -march for bun's own C/C++ sources and for
+WebKit, and rust.ts derives -Ctarget-cpu from the same entry, so the two
+halves of the binary keep the same target under cross-language LTO.
+
+Unset, the flag is -march=nehalem as before.
+---
+ scripts/build/flags.ts | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/scripts/build/flags.ts b/scripts/build/flags.ts
+index 59befe77..0f1f116e 100644
+--- a/scripts/build/flags.ts
++++ b/scripts/build/flags.ts
+@@ -71,9 +71,11 @@ export const cpuTargetFlags: Flag[] = [
+     desc: "ARM64 Windows: ARMv8-A base + CRC, generic tuning (clang-cl prefix required)",
+   },
+   {
+-    flag: "-march=nehalem",
++    // BUN_CPU_TARGET names another target (znver4, native, x86-64-v3, ...) for a build that only has to run on the machine
++    // it is built on: the C/C++ and Rust halves both take it (rust.ts derives -Ctarget-cpu from this entry).
++    flag: () => `-march=${process.env.BUN_CPU_TARGET || "nehalem"}`,
+     when: c => c.x64,
+-    desc: "x64: Nehalem (2008) — no AVX, broadest compatibility",
++    desc: "x64: Nehalem (2008) — no AVX, broadest compatibility (BUN_CPU_TARGET=znver4: for this machine only)",
+   },
+ ];
+ 
+-- 
+2.56.0
+

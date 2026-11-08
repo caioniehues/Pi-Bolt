@@ -89,6 +89,23 @@ scripts/fetch-sources.sh
 scripts/build-runtime.sh            # -> .work/runtime/bun (ThinLTO, as released)
 ```
 
+### A runtime for this machine's CPU
+
+The x64 C/C++ and Rust halves are built with `-march=nehalem`, the broadest floor Bun ships, whatever the build machine is.
+`BUN_CPU_TARGET=znver4` (or `native`, `x86-64-v3`, any name clang takes for `-march`) names the CPU instead: the environment
+goes through `scripts/build-runtime.sh` to Bun's build, which uses it for bun's own sources and for WebKit/JavaScriptCore, and
+`rust.ts` derives `-Ctarget-cpu` from the same entry, so the two halves keep one target under cross-language LTO. The code
+compiled ahead of time is a separate matter: `scripts/build-pi.sh --cpu native` already writes the building CPU's instruction
+set into the executable.
+
+A different `-march` is a different build: give it a build directory of its own with
+`scripts/build-runtime.sh --native --build-dir pibolt-release-znver4`, or it replaces the portable build's objects. Like
+`--native`, the result runs only on CPUs with that instruction set.
+
+```bash
+BUN_CPU_TARGET=znver4 scripts/build-runtime.sh --native --build-dir pibolt-release-znver4
+```
+
 ### Linux ARM64 in a container
 
 [`scripts/toolchain/linux-build.Dockerfile`](../scripts/toolchain/linux-build.Dockerfile) is a Linux machine with the tools above,
