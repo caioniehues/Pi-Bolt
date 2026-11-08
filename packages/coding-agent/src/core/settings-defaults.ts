@@ -40,6 +40,11 @@ export const SETTINGS_DEFAULTS = {
 		clearOnShrink: false,
 		showTerminalProgress: false,
 	},
+	footer: {
+		showFps: false,
+		showTokenRate: true,
+		showTurnTime: true,
+	},
 	images: {
 		autoResize: true,
 		blockImages: false,

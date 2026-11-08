@@ -101,6 +101,9 @@ export interface SettingsConfig {
 	fullscreenScrollbar: ScrollViewScrollbar;
 	fullscreenCopyOnSelect: boolean;
 	fullscreenWheelScrollLines: WheelScrollLines;
+	footerShowFps: boolean;
+	footerShowTokenRate: boolean;
+	footerShowTurnTime: boolean;
 	warnings: WarningSettings;
 }
 
@@ -142,6 +145,9 @@ export interface SettingsCallbacks {
 	onFullscreenScrollbarChange: (mode: ScrollViewScrollbar) => void;
 	onFullscreenCopyOnSelectChange: (enabled: boolean) => void;
 	onFullscreenWheelScrollLinesChange: (lines: WheelScrollLines) => void;
+	onFooterShowFpsChange: (enabled: boolean) => void;
+	onFooterShowTokenRateChange: (enabled: boolean) => void;
+	onFooterShowTurnTimeChange: (enabled: boolean) => void;
 	onWarningsChange: (warnings: WarningSettings) => void;
 	onCancel: () => void;
 }
@@ -884,6 +890,34 @@ export class SettingsSelectorComponent extends Container {
 			values: ["true", "false"],
 		});
 
+		// Footer meters (insert after terminal-progress)
+		const terminalProgressIndex = items.findIndex((item) => item.id === "terminal-progress");
+		items.splice(
+			terminalProgressIndex + 1,
+			0,
+			{
+				id: "footer-fps",
+				label: "Footer fps",
+				description: "Frames per second written to the terminal (PI_TUI_SHOW_FPS=1 turns it on)",
+				currentValue: config.footerShowFps ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
+				id: "footer-token-rate",
+				label: "Footer tokens/s",
+				description: "Output tokens per second, live while a reply streams, averaged after the turn",
+				currentValue: config.footerShowTokenRate ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
+				id: "footer-turn-time",
+				label: "Footer turn time",
+				description: "Elapsed time of the current or last turn",
+				currentValue: config.footerShowTurnTime ? "true" : "false",
+				values: ["true", "false"],
+			},
+		);
+
 		// Add borders
 		this.addChild(new DynamicBorder());
 
@@ -986,6 +1020,15 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "terminal-progress":
 						callbacks.onShowTerminalProgressChange(newValue === "true");
+						break;
+					case "footer-fps":
+						callbacks.onFooterShowFpsChange(newValue === "true");
+						break;
+					case "footer-token-rate":
+						callbacks.onFooterShowTokenRateChange(newValue === "true");
+						break;
+					case "footer-turn-time":
+						callbacks.onFooterShowTurnTimeChange(newValue === "true");
 						break;
 					case "tui-mode":
 						callbacks.onTuiModeChange(newValue as TuiMode);

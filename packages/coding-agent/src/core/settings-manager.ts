@@ -38,6 +38,7 @@ export type {
 	CompactionModelOverride,
 	CompactionSettings,
 	DefaultProjectTrust,
+	FooterSettings,
 	FullscreenExitOutput,
 	ImageSettings,
 	MarkdownSettings,
@@ -1645,6 +1646,50 @@ export class SettingsManager {
 		}
 		this.globalSettings.terminal.showTerminalProgress = enabled;
 		this.markModified("terminal", "showTerminalProgress");
+		this.save();
+	}
+
+	getFooterShowFps(): boolean {
+		// Settings takes precedence, then env var, then default off
+		if (this.settings.footer?.showFps !== undefined) {
+			return this.settings.footer.showFps;
+		}
+		if (process.env.PI_TUI_SHOW_FPS === "1") return true;
+		return SETTINGS_DEFAULTS.footer.showFps;
+	}
+
+	setFooterShowFps(enabled: boolean): void {
+		if (!this.globalSettings.footer) {
+			this.globalSettings.footer = {};
+		}
+		this.globalSettings.footer.showFps = enabled;
+		this.markModified("footer", "showFps");
+		this.save();
+	}
+
+	getFooterShowTokenRate(): boolean {
+		return this.settings.footer?.showTokenRate ?? SETTINGS_DEFAULTS.footer.showTokenRate;
+	}
+
+	setFooterShowTokenRate(enabled: boolean): void {
+		if (!this.globalSettings.footer) {
+			this.globalSettings.footer = {};
+		}
+		this.globalSettings.footer.showTokenRate = enabled;
+		this.markModified("footer", "showTokenRate");
+		this.save();
+	}
+
+	getFooterShowTurnTime(): boolean {
+		return this.settings.footer?.showTurnTime ?? SETTINGS_DEFAULTS.footer.showTurnTime;
+	}
+
+	setFooterShowTurnTime(enabled: boolean): void {
+		if (!this.globalSettings.footer) {
+			this.globalSettings.footer = {};
+		}
+		this.globalSettings.footer.showTurnTime = enabled;
+		this.markModified("footer", "showTurnTime");
 		this.save();
 	}
 

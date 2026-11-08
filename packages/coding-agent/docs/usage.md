@@ -6,7 +6,7 @@ Pi may ask whether you trust the working folder before loading its project resou
 
 <p align="center"><img src="images/interactive-mode.png" alt="Pi interactive mode showing a conversation, editor, and status information" width="750"></p>
 
-The transcript shows your prompts, Pi's responses, tool calls, results, and errors. You write prompts and commands in the editor. The footer shows the current folder, session, model, context usage, and accumulated usage and cost.
+The transcript shows your prompts, Pi's responses, tool calls, results, and errors. You write prompts and commands in the editor. The footer shows the current folder, session, model, context usage, and accumulated usage and cost. It can also show the elapsed time of the current or last turn and the output-token rate, live while a response streams; see the `footer` settings in [Settings](settings.md).
 
 ## Enter a prompt
 

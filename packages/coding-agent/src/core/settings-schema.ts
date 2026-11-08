@@ -156,6 +156,28 @@ const TerminalSettingsSchema = Type.Object({
 	trueColor: Type.Optional(Type.Union([Type.Boolean(), Type.Literal("auto")])),
 });
 
+const FooterSettingsSchema = Type.Object({
+	showFps: Type.Optional(
+		Type.Boolean({
+			description:
+				"Show frames per second written by the interface; PI_TUI_SHOW_FPS=1 turns it on when the setting is unset.",
+			default: SETTINGS_DEFAULTS.footer.showFps,
+		}),
+	),
+	showTokenRate: Type.Optional(
+		Type.Boolean({
+			description: "Show output tokens per second, live while a reply streams and averaged after the turn.",
+			default: SETTINGS_DEFAULTS.footer.showTokenRate,
+		}),
+	),
+	showTurnTime: Type.Optional(
+		Type.Boolean({
+			description: "Show the elapsed time of the current or last turn.",
+			default: SETTINGS_DEFAULTS.footer.showTurnTime,
+		}),
+	),
+});
+
 const ImageSettingsSchema = Type.Object({
 	autoResize: Type.Optional(
 		Type.Boolean({
@@ -456,6 +478,7 @@ export const SettingsSchema = Type.Object(
 			}),
 		),
 		terminal: Type.Optional(TerminalSettingsSchema),
+		footer: Type.Optional(FooterSettingsSchema),
 		images: Type.Optional(ImageSettingsSchema),
 		enabledModels: Type.Optional(
 			Type.Array(Type.String(), {
@@ -593,6 +616,7 @@ export interface BranchSummarySettings extends Static<typeof BranchSummarySettin
 export interface ProviderRetrySettings extends Static<typeof ProviderRetrySettingsSchema> {}
 export interface RetrySettings extends Omit<Static<typeof RetrySettingsSchema>, "maxDelayMs"> {}
 export interface TerminalSettings extends Static<typeof TerminalSettingsSchema> {}
+export interface FooterSettings extends Static<typeof FooterSettingsSchema> {}
 export interface ImageSettings extends Static<typeof ImageSettingsSchema> {}
 export interface ThinkingBudgetsSettings extends Static<typeof ThinkingBudgetsSettingsSchema> {}
 export type MermaidRenderingMode = NonNullable<Static<typeof MarkdownSettingsSchema>["mermaid"]>;

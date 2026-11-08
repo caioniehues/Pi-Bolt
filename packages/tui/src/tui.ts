@@ -1212,6 +1212,8 @@ export interface TUI extends Component {
 	terminal: Terminal;
 	onDebug?: () => void;
 	readonly fullRedraws: number;
+	/** Frames written to the terminal so far, one per renderFrame(): the footer's fps meter samples it. */
+	readonly frameCount: number;
 	addChild(component: Component): void;
 	removeChild(component: Component): void;
 	clear(): void;
@@ -1285,6 +1287,8 @@ export abstract class TuiBase extends Container implements TUI {
 	/** Frames still to trace (PI_TTI_TRACE); 0 when tracing is off. */
 	private framesToTrace = 0;
 	private framesTraced = 0;
+	/** Frames written to the terminal; read by the footer's fps meter, so it is a plain counter. */
+	private framesWrittenCount = 0;
 	private showHardwareCursor = false;
 	private clearOnShrink = false;
 	protected fullRedrawCount = 0;
@@ -1328,6 +1332,7 @@ export abstract class TuiBase extends Container implements TUI {
 			this.deferredRenderTimer = undefined;
 		}
 		this.doRender();
+		this.framesWrittenCount++;
 		this.lastFrameDuration = this.nextFrameUnspaced ? 0 : renderClock() - start;
 		this.nextFrameUnspaced = false;
 		this.nextFrameForInput = false;
@@ -1372,6 +1377,10 @@ export abstract class TuiBase extends Container implements TUI {
 
 	get fullRedraws(): number {
 		return this.fullRedrawCount;
+	}
+
+	get frameCount(): number {
+		return this.framesWrittenCount;
 	}
 
 	getShowHardwareCursor(): boolean {

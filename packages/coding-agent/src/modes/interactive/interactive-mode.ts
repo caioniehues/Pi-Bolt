@@ -166,6 +166,7 @@ import { ExtensionEditorComponent } from "./components/extension-editor.ts";
 import { ExtensionInputComponent } from "./components/extension-input.ts";
 import { ExtensionSelectorComponent } from "./components/extension-selector.ts";
 import { FooterComponent, formatTokens } from "./components/footer.ts";
+import { type FooterMeterDisplay, FooterMeters } from "./components/footer-meters.ts";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.ts";
 import { LoginDialogComponent } from "./components/login-dialog.ts";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.ts";
@@ -502,6 +503,7 @@ export class InteractiveMode {
 	private activeSelectorDispose?: () => void;
 	private footer: FooterComponent;
 	private footerContainer: Container;
+	private footerMeters: FooterMeters;
 	private footerDataProvider: FooterDataProvider;
 	// Stored so the same manager can be injected into custom editors, selectors, and extension UI.
 	private keybindings: KeybindingsManager;
@@ -715,6 +717,12 @@ export class InteractiveMode {
 		this.connectionWarmer = preconnect ? new ConnectionWarmer({ preconnect }) : undefined;
 		this.footer = new FooterComponent(this.session, this.footerDataProvider);
 		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
+		this.footerMeters = new FooterMeters({
+			getFrameCount: () => this.renderer.frameCount,
+			requestRender: () => this.ui.requestRender(),
+		});
+		this.footerMeters.setDisplay(this.footerMeterDisplay());
+		this.footer.setMeters(this.footerMeters);
 		this.footerContainer = new Container();
 		this.footerContainer.addChild(this.footer);
 
@@ -2259,6 +2267,15 @@ export class InteractiveMode {
 		});
 	}
 
+	/** The meters the footer draws, from settings (PI_TUI_SHOW_FPS turns fps on when the setting is unset). */
+	private footerMeterDisplay(): FooterMeterDisplay {
+		return {
+			showFps: this.settingsManager.getFooterShowFps(),
+			showTokenRate: this.settingsManager.getFooterShowTokenRate(),
+			showTurnTime: this.settingsManager.getFooterShowTurnTime(),
+		};
+	}
+
 	private applyRuntimeSettings(): void {
 		setCapabilityOverrides(this.settingsManager.getTerminalCapabilityOverrides());
 		this.ensurePngTranscoder();
@@ -2270,6 +2287,7 @@ export class InteractiveMode {
 		}
 		this.footer.setSession(this.session);
 		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
+		this.footerMeters.setDisplay(this.footerMeterDisplay());
 		this.footerDataProvider.setCwd(this.sessionManager.getCwd());
 		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
 		this.outputPad = this.settingsManager.getOutputPad();
@@ -3748,6 +3766,7 @@ export class InteractiveMode {
 				break;
 
 			case "turn_start":
+				this.footerMeters.turnStarted();
 				if (this.settingsManager.getShowTerminalProgress()) {
 					this.ui.terminal.setProgress(true);
 				}
@@ -3758,6 +3777,12 @@ export class InteractiveMode {
 				} else {
 					this.clearStatusIndicator();
 				}
+				this.ui.requestRender();
+				break;
+
+			case "turn_end":
+				// The footer keeps the turn's time and average rate.
+				this.footerMeters.turnEnded();
 				this.ui.requestRender();
 				break;
 
@@ -3849,6 +3874,7 @@ export class InteractiveMode {
 			case "message_update":
 				if (this.streamingComponent && event.message.role === "assistant") {
 					this.streamingMessage = event.message;
+					this.footerMeters.assistantStreaming(event.message);
 					this.streamingComponent.updateContent(this.streamingMessage, true);
 
 					// A tool call's argument delta changes only that call's arguments, and the providers parse them again
@@ -3890,6 +3916,7 @@ export class InteractiveMode {
 
 			case "message_end":
 				if (event.message.role === "user") break;
+				if (event.message.role === "assistant") this.footerMeters.assistantMessageEnded(event.message);
 				if (this.streamingComponent && event.message.role === "assistant") {
 					this.streamingMessage = event.message;
 					let errorMessage: string | undefined;
@@ -4007,6 +4034,7 @@ export class InteractiveMode {
 				break;
 
 			case "agent_settled":
+				this.footerMeters.settled();
 				await this.checkShutdownRequested();
 				break;
 
@@ -5352,6 +5380,9 @@ export class InteractiveMode {
 					fullscreenScrollbar: this.settingsManager.getFullscreenScrollbar(),
 					fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
 					fullscreenWheelScrollLines: this.settingsManager.getFullscreenWheelScrollLines(),
+					footerShowFps: this.settingsManager.getFooterShowFps(),
+					footerShowTokenRate: this.settingsManager.getFooterShowTokenRate(),
+					footerShowTurnTime: this.settingsManager.getFooterShowTurnTime(),
 					warnings: this.settingsManager.getWarnings(),
 				},
 				{
@@ -5536,6 +5567,21 @@ export class InteractiveMode {
 					onFullscreenWheelScrollLinesChange: (lines) => {
 						this.settingsManager.setFullscreenWheelScrollLines(lines);
 						if (this.renderer instanceof TuiAltScreen) this.renderer.setWheelScrollLines(lines);
+					},
+					onFooterShowFpsChange: (enabled) => {
+						this.settingsManager.setFooterShowFps(enabled);
+						this.footerMeters.setDisplay(this.footerMeterDisplay());
+						this.ui.requestRender();
+					},
+					onFooterShowTokenRateChange: (enabled) => {
+						this.settingsManager.setFooterShowTokenRate(enabled);
+						this.footerMeters.setDisplay(this.footerMeterDisplay());
+						this.ui.requestRender();
+					},
+					onFooterShowTurnTimeChange: (enabled) => {
+						this.settingsManager.setFooterShowTurnTime(enabled);
+						this.footerMeters.setDisplay(this.footerMeterDisplay());
+						this.ui.requestRender();
 					},
 					onWarningsChange: (warnings) => {
 						this.settingsManager.setWarnings(warnings);
@@ -7589,6 +7635,7 @@ export class InteractiveMode {
 		this.themeController.disableAutoSync();
 		this.clearExtensionTerminalInputListeners();
 		this.footer.dispose();
+		this.footerMeters.dispose();
 		this.footerDataProvider.dispose();
 		this.unsubscribeCapabilityChanges?.();
 		this.unsubscribeCapabilityChanges = undefined;

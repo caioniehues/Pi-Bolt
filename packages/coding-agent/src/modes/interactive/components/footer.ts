@@ -6,6 +6,7 @@ import type { ContextUsage } from "../../../core/extensions/types.ts";
 import type { ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.ts";
 import { addUsageToTotals, createUsageTotals, type UsageTotals } from "../../../core/usage-totals.ts";
 import { type Theme, theme } from "../theme/theme.ts";
+import type { FooterMeters, FooterMeterValues } from "./footer-meters.ts";
 
 /**
  * Sanitize text for display in a single-line status.
@@ -56,6 +57,13 @@ interface FooterInputs {
 	cacheWrite: number;
 	cost: number;
 	latestCacheHitRate: number | undefined;
+	/** The live meters, from FooterMeters.values(): an undefined value hides its meter. */
+	fps: number | undefined;
+	fpsStale: boolean;
+	tokenRate: number | undefined;
+	tokenRateLive: boolean;
+	turnSeconds: number | undefined;
+	turnRunning: boolean;
 	contextWindow: number;
 	contextPercentValue: number;
 	/** Whether the context usage's percentage is known (not null). */
@@ -87,6 +95,12 @@ const FOOTER_VALUE_INPUTS = [
 	"cacheWrite",
 	"cost",
 	"latestCacheHitRate",
+	"fps",
+	"fpsStale",
+	"tokenRate",
+	"tokenRateLive",
+	"turnSeconds",
+	"turnRunning",
 	"contextWindow",
 	"contextPercentValue",
 	"contextPercentKnown",
@@ -151,6 +165,21 @@ function renderFooterLines(inputs: FooterInputs): string[] {
 	if (inputs.cost || usingSubscription) {
 		const costStr = `$${inputs.cost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`;
 		statsParts.push(costStr);
+	}
+
+	// The live meters: accent while they count on (the turn runs, the assistant streams), dim once settled.
+	// Each is left out when its setting is off, and then never reaches this line.
+	if (inputs.turnSeconds !== undefined) {
+		const turnStr = `${inputs.turnSeconds.toFixed(1)}s`;
+		statsParts.push(inputs.turnRunning ? theme.fg("accent", turnStr) : turnStr);
+	}
+	if (inputs.tokenRate !== undefined) {
+		const rateStr = `${Math.round(inputs.tokenRate)}tok/s`;
+		statsParts.push(inputs.tokenRateLive ? theme.fg("accent", rateStr) : rateStr);
+	}
+	if (inputs.fps !== undefined) {
+		const fpsStr = `${Math.round(inputs.fps)}fps`;
+		statsParts.push(inputs.fpsStale ? theme.fg("dim", fpsStr) : theme.fg("accent", fpsStr));
 	}
 
 	// Colorize context percentage based on usage
@@ -277,6 +306,7 @@ export class FooterComponent implements Component {
 	private autoCompactEnabled = true;
 	private session: AgentSession;
 	private footerData: ReadonlyFooterDataProvider;
+	private meters: FooterMeters | undefined;
 	private sessionStats?: SessionStats;
 	private formattedCwd?: { cwd: string; home: string | undefined; text: string };
 	/** What render() drew last, and what it drew it from. */
@@ -293,6 +323,11 @@ export class FooterComponent implements Component {
 
 	setAutoCompactEnabled(enabled: boolean): void {
 		this.autoCompactEnabled = enabled;
+	}
+
+	/** The live fps, token-rate and turn-time meters; without them the footer draws only what it always did. */
+	setMeters(meters: FooterMeters | undefined): void {
+		this.meters = meters;
 	}
 
 	/**
@@ -409,6 +444,8 @@ export class FooterComponent implements Component {
 
 		const routed = this.session.routedModel;
 		const statuses = this.footerData.getExtensionStatuses();
+		// Sampled once per frame: the fps window, the live token rate and a running turn's elapsed time.
+		const meters: FooterMeterValues | undefined = this.meters?.values();
 		return {
 			width,
 			theme,
@@ -419,6 +456,12 @@ export class FooterComponent implements Component {
 			cacheWrite: usageTotals.cacheWrite,
 			cost: usageTotals.cost,
 			latestCacheHitRate,
+			fps: meters?.fps,
+			fpsStale: meters?.fpsStale ?? false,
+			tokenRate: meters?.tokenRate,
+			tokenRateLive: meters?.tokenRateLive ?? false,
+			turnSeconds: meters?.turnSeconds,
+			turnRunning: meters?.turnRunning ?? false,
 			contextWindow: contextUsage?.contextWindow ?? model?.contextWindow ?? 0,
 			contextPercentValue: contextUsage?.percent ?? 0,
 			contextPercentKnown: contextUsage?.percent !== null,

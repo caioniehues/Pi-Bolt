@@ -118,6 +118,9 @@ See [Compaction Reference](compaction.md) for trigger, summarization, and valida
 | `terminal.imageWidthCells` | number | `60` | Preferred inline image width in terminal cells. |
 | `terminal.clearOnShrink` | boolean | `false` | Clear empty rows when rendered content shrinks. When unset, `PI_CLEAR_ON_SHRINK=1` enables it. |
 | `terminal.showTerminalProgress` | boolean | `false` | Show OSC 9;4 progress in the terminal tab. |
+| `footer.showFps` | boolean | `false` | Show frames per second written to the terminal, dimmed when the interface draws nothing. When unset, `PI_TUI_SHOW_FPS=1` enables it. |
+| `footer.showTokenRate` | boolean | `true` | Show output tokens per second: live while a reply streams, the turn's average after it. |
+| `footer.showTurnTime` | boolean | `true` | Show the elapsed time of the current or last turn. |
 | `terminal.hyperlinks` | `boolean \| "auto"` | `"auto"` | Override OSC 8 hyperlink detection. |
 | `terminal.images` | `"kitty" \| "iterm2" \| "auto" \| false` | `"auto"` | Override inline-image protocol detection. |
 | `terminal.trueColor` | `boolean \| "auto"` | `"auto"` | Override true-color detection. |
